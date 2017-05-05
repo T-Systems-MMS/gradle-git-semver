@@ -1,0 +1,77 @@
+plugins {
+    id 'com.jfrog.bintray' version '1.7.3'
+    id 'com.gradle.plugin-publish' version '0.9.7'
+    id 'groovy'
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile gradleApi()
+    compile 'org.eclipse.jgit:org.eclipse.jgit:4.7.0.201704051617-r'
+
+    testCompile gradleTestKit()
+    testCompile('org.spockframework:spock-core:1.1-groovy-2.4') {
+        exclude module: 'groovy-all'
+    }
+}
+
+group 'eu.t-systems-mms.gradle.gitsemver'
+version '0.1.0'
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier 'sources'
+}
+
+publishing {
+    publications {
+        bintray(MavenPublication) {
+            from components.java
+            artifact(sourceJar)
+            artifact(publishPluginJavaDocsJar)
+        }
+    }
+}
+
+bintray {
+    user = System.env.BINTRAY_USER
+    key = System.env.BINTRAY_KEY
+    publish = true
+    pkg {
+        repo = 'releases'
+        name = 'gradle-git-semver'
+        userOrg = 't-systems-mms'
+        licenses = ['Apache-2.0']
+        publications = ['bintray']
+    }
+}
+
+bintrayUpload.dependsOn 'generatePomFileForBintrayPublication', 'sourceJar', 'build'
+
+bintrayUpload.onlyIf {
+    System.env.BINTRAY_USER && System.env.BINTRAY_KEY && project.version == ~/\d+\.\d+\.\d+/
+}
+
+pluginBundle {
+    website = 'https://github.com/T-Systems-MMS/gradle-git-semver'
+    vcsUrl = 'https://github.com/T-Systems-MMS/gradle-git-semver'
+    description = 'Gradle Git-Semver is a plugin that generates a maven compatible version for use with Gradle by calling git-describe.'
+    tags = ['git', 'version', 'semver', 'maven']
+
+    plugins {
+        gitSemverPlugin {
+            id = 'eu.t-systems-mms.git-semver'
+            displayName = 'T-Systems MMS Git-SemVer'
+        }
+    }
+}
+
+publishPlugins.onlyIf {
+    project.version ==~ /\d+\.\d+\.\d+/
+}
+
